@@ -110,12 +110,28 @@ func (tw *TextWords) GetWord(at int) WordLoc {
 	return tw.ws[at]
 }
 
-func (tw *TextWords) SurroundingText(at int) WordLoc {
-	return tw.ws[at]
+func (tw *TextWords) SurroundingText(at, size int) string {
+	lAt := at-size
+	lSz := size
+
+	if lAt < 0 {
+		df := at-size
+		lAt = 0
+		lSz = lSz + df
+	}
+
+	cntr := tw.GetWord(at)
+
+	return fmt.Sprintf("%s%s%s",
+	tw.getText(lAt, lSz),cntr.lws+"*"+cntr.W+"*",tw.getText(at+1, size))
 }
 
 func (tw *TextWords) Text() string {
 	return tw.getText(0, len(tw.ws))
+}
+
+func (tw *TextWords) Len() int {
+	return len(tw.ws)
 }
 
 
@@ -123,7 +139,17 @@ func (tw *TextWords) Text() string {
 func (tw *TextWords) getText(from, size int) string {
 	txt := strings.Builder{}
 
-	for _, wloc := range tw.ws[from:from+size] {
+	if from < 0 {
+		from = 0
+	}
+
+	to := from+size
+
+	if to > tw.Len() {
+		to = tw.Len()
+	}
+
+	for _, wloc := range tw.ws[from:to] {
 		txt.WriteString(wloc.lws)
 		txt.WriteString(wloc.W)
 	}

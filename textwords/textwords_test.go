@@ -204,3 +204,60 @@ func TestDelete(t *testing.T) {
 		})
 	}
 }
+func TestSurroundingText(t *testing.T) {
+	var tests = []struct {
+		at int
+		size int
+		text string
+		want string
+	}{
+		{
+			at: 0,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: "*and?*\n\nHow could",
+		},
+		{
+			at: 1,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: "and?\n\n*How* could you",
+		},
+		{
+			at: 2,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: "and?\n\nHow *could* you say",
+		},
+		{
+			at: 3,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: "\n\nHow could *you* say that?",
+		},
+		{
+			at: 4,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: " could you *say* that?",
+		},
+		{
+			at: 5,
+			size: 2,
+			text: "and?\n\nHow could you say that?",
+			want: " you say *that?*",
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("surrounding %d at %d", tt.size, tt.at)
+		t.Run(testname, func(t *testing.T) {
+			txtWs := FromString(tt.text)
+			res := txtWs.SurroundingText(tt.at,tt.size)
+
+			if res != tt.want {
+				t.Errorf("\ngot: %s\nwant: %s",res,tt.want)
+			}
+		})
+	}
+}

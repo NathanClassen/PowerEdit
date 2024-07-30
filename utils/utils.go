@@ -58,8 +58,7 @@ func Min(a, b int) int {
 }
 
 // updateFile updates the file content with the specified words.
-func UpdateFile(filename string, words []string) error {
-	content := strings.Join(words, " ")
+func UpdateFile(filename string, content string) error {
 	return os.WriteFile(filename, []byte(content), 0644)
 }
 

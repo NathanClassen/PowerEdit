@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compare/textwords"
 	"compare/utils"
 	"fmt"
 	"os"
@@ -17,82 +18,72 @@ func main() {
 		return
 	}
 
-	idx := 0
-	jdx := 0
+	i := 0
+	j := 0
 
 	file1 := os.Args[1] // file to edit
 	file2 := os.Args[2] // source file
 
-	idx, err := strconv.Atoi(os.Args[3])
+	i, err := strconv.Atoi(os.Args[3])
 	if err != nil {
 		fmt.Printf("Couldn't parse idx, using 0")
-		idx = 0
+		i = 0
 	}
 
-	jdx, err = strconv.Atoi(os.Args[4])
+	j, err = strconv.Atoi(os.Args[4])
 	if err != nil {
 		fmt.Printf("Couldn't parse jdx, using 0")
-		jdx = 0
+		j = 0
 	}
 
 	/* ************************************************************************
 		READ IN WORDS OF FILE 1
 	************************************************************************ */
 
-	words1, err := utils.ReadWords(file1)
+	editWords, err := textwords.FromFile(file1)
 	if err != nil {
-		fmt.Println("Error reading file1:", err)
+		fmt.Println("Error getting edit words:", err)
 		return
-	}
-
-	for a, b := range words1 {
-		words1[a] = utils.ReplaceQuotes(b)
 	}
 
 	/* ************************************************************************
 		READ IN WORDS OF FILE 2
 	************************************************************************ */
 
-	words2, err := utils.ReadWords(file2)
+	sourceWords, err := textwords.FromFile(file2)
 	if err != nil {
-		fmt.Println("Error reading file2:", err)
+		fmt.Println("Error getting source words:", err)
 		return
-	}
-
-	for a, b := range words2 {
-		words2[a] = utils.ReplaceQuotes(b)
 	}
 
 	/* ************************************************************************
 		SET UP AND RUN MAIN PROCESS
 	************************************************************************ */
 
-	minLength := min(len(words1), len(words2))
+	minLength := min(editWords.Len(), sourceWords.Len())
+	
 	discrepancies := false
-
-	fmt.Printf("Will begin editing %s according to %s\n\n", file1, file2)
-
 	continueEditing := true
 
-	var i int
-	var j int
+	for ; i < minLength && continueEditing; {
+		editWordLoc 	:= editWords.GetWord(i)
+		sourceWordLoc 	:= sourceWords.GetWord(j)
 
-	for i, j = idx, jdx; i < minLength && continueEditing; {
-		word1 := utils.CleanWord(words1[i])
-		word2 := utils.CleanWord(words2[j])
+		editWord := utils.CleanWord(editWordLoc.W)
+		sourceWord := utils.CleanWord(sourceWordLoc.W)
 
-		if word1 == "" {
+		if editWord == "" {
 			i++
 			continue
 		}
-		if word2 == "" {
+		if sourceWord == "" {
 			j++
 			continue
 		}
 
-		if word1 != word2 {
+		if editWord != sourceWord {
 			discrepancies = true
-			utils.PrintSurroundingWords(words1, words2, i, j, file1, file2)
+			fmt.Printf("discrepancy:\ntxt: %s\nsrc: %s\n",editWords.SurroundingText(i,10),sourceWords.SurroundingText(j,10))
 
 			// var choice int
 			var choice string
@@ -112,23 +103,23 @@ func main() {
 				} else if choice == "a" {
 					//  discrep is that file under edit is missing a token from the source
 					//  so add source token to the file under edit
-					words1 = append(words1[:i], append([]string{words2[j]}, words1[i:]...)...)
+					editWords.Insert(sourceWordLoc,i)
 
 					break
 				} else if choice == "e" {
 					//  discrep is just a mispelled word or the wrong word, but before and after, the text is good
 					//  so make words1[i] equal whatever is at words2[i]
-					words1[i] = words2[j]
+					editWords.Edit(i, sourceWordLoc)
 					//  resume comparison at i
 					break
 				} else if choice == "ex" {
 					//  e but apply the edit to the source file
-					words2[j] = words1[i]
+					sourceWords.Edit(j, editWordLoc)
 					//  resume comparison at i
 					break
 				} else if choice == "d" {
 					// surplus token in file under edit, delete that token
-					words1 = append(words1[0:i], words1[i+1:]...)
+					editWords.Delete(i)
 
 					break
 				} else if choice == "v" {
@@ -137,7 +128,7 @@ func main() {
 					break
 				} else if choice == "x" {
 					// delete token from source
-					words2 = append(words2[0:j], words2[j+1:]...)
+					sourceWords.Delete(j)
 					break
 				} else {
 					digits, err := utils.ParseDigits(choice)
@@ -158,10 +149,10 @@ func main() {
 	}
 
 	if discrepancies {
-		if err := utils.UpdateFile(file1, words1); err != nil {
+		if err := utils.UpdateFile("mod_"+file1, editWords.Text()); err != nil {
 			fmt.Println("Error updating file1:", err)
 		}
-		if err := utils.UpdateFile(file2, words2); err != nil {
+		if err := utils.UpdateFile("mod_"+file2, sourceWords.Text()); err != nil {
 			fmt.Println("Error updating file2:", err)
 		}
 		fmt.Println("Files have been updated based on user choices.")
