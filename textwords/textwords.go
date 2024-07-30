@@ -13,9 +13,9 @@ W is the word, the first letter of the word is at index-S
 in the block of text and the last letter at index-E
 */
 type WordLoc struct {
-	W string
-	s int
-	e int
+	W   string
+	s   int
+	e   int
 	lws string
 	rws string
 }
@@ -37,7 +37,7 @@ type TextWords struct {
 }
 
 /*
-	Create TextWords from content of a file, presumably a plain-txt file
+Create TextWords from content of a file, presumably a plain-txt file
 */
 func FromFile(filename string) (*TextWords, error) {
 	// read file
@@ -46,11 +46,11 @@ func FromFile(filename string) (*TextWords, error) {
 	} else {
 		return new(string(b)), nil
 	}
-	
+
 }
 
 /*
-	Create TextWords from content of a string
+Create TextWords from content of a string
 */
 func FromString(txt string) *TextWords {
 	return new(txt)
@@ -65,8 +65,6 @@ func new(txt string) *TextWords {
 	}
 }
 
-
-
 func (tw *TextWords) Insert(w WordLoc, at int) {
 	if at >= len(tw.ws) {
 		tw.ws = append(tw.ws, w)
@@ -74,7 +72,7 @@ func (tw *TextWords) Insert(w WordLoc, at int) {
 		tw.ws = append([]WordLoc{w}, tw.ws...)
 	} else {
 		tw.ws[at-1].rws = ""
-		tw.ws[at].lws = ""
+		tw.ws[at].lws = w.rws
 
 		tw.ws = append(tw.ws[0:at], append([]WordLoc{w}, tw.ws[at:]...)...)
 	}
@@ -93,15 +91,15 @@ func (tw *TextWords) Delete(at int) {
 	} else {
 		lw := &tw.ws[at-1]
 		rw := &tw.ws[at+1]
-	
-		if lw.rws != " " || rw.lws != " " {			//	if the word on left or right of deleted word has significant wsp against deleted word
-			if lw.rws != " " && rw.lws != " " {		//	check if both have significant wsp
-				rw.lws = lw.rws + rw.lws			//	if so, ensure it's all retained by setting as rw.lws; this is what will be applied at text generation
-			} else if lw.rws != " " {				//	else if it's the lw that has significant space
-				rw.lws = lw.rws						//	ensure it's retained by trading rw's insignificant space
+
+		if lw.rws != " " || rw.lws != " " { //	if the word on left or right of deleted word has significant wsp against deleted word
+			if lw.rws != " " && rw.lws != " " { //	check if both have significant wsp
+				rw.lws = lw.rws + rw.lws //	if so, ensure it's all retained by setting as rw.lws; this is what will be applied at text generation
+			} else if lw.rws != " " { //	else if it's the lw that has significant space
+				rw.lws = lw.rws //	ensure it's retained by trading rw's insignificant space
 			}
 		}
-	
+
 		tw.ws = append(tw.ws[0:at], tw.ws[at+1:]...)
 	}
 }
@@ -111,19 +109,21 @@ func (tw *TextWords) GetWord(at int) WordLoc {
 }
 
 func (tw *TextWords) SurroundingText(at, size int) string {
-	lAt := at-size
+	lAt := at - size
 	lSz := size
 
 	if lAt < 0 {
-		df := at-size
+		df := at - size
 		lAt = 0
 		lSz = lSz + df
 	}
 
 	cntr := tw.GetWord(at)
 
-	return fmt.Sprintf("%s%s%s",
-	tw.getText(lAt, lSz),cntr.lws+"*"+cntr.W+"*",tw.getText(at+1, size))
+	str := fmt.Sprintf("%s%s%s",
+		tw.getFlattenedString(lAt, lSz), " *"+cntr.W+"* ", tw.getFlattenedString(at+1, size))
+
+	return strings.TrimSpace(str)
 }
 
 func (tw *TextWords) Text() string {
@@ -134,8 +134,6 @@ func (tw *TextWords) Len() int {
 	return len(tw.ws)
 }
 
-
-
 func (tw *TextWords) getText(from, size int) string {
 	txt := strings.Builder{}
 
@@ -143,7 +141,7 @@ func (tw *TextWords) getText(from, size int) string {
 		from = 0
 	}
 
-	to := from+size
+	to := from + size
 
 	if to > tw.Len() {
 		to = tw.Len()
@@ -156,10 +154,30 @@ func (tw *TextWords) getText(from, size int) string {
 
 	return txt.String()
 }
+func (tw *TextWords) getFlattenedString(from, size int) string {
+	txt := strings.Builder{}
+
+	if from < 0 {
+		from = 0
+	}
+
+	to := from + size
+
+	if to > tw.Len() {
+		to = tw.Len()
+	}
+
+	for _, wloc := range tw.ws[from:to] {
+		txt.WriteString(wloc.W)
+		txt.WriteString(" ")
+	}
+
+	return strings.TrimSpace(txt.String())
+}
 
 func parsewordLocs(txt string) []WordLoc {
 	wls := []WordLoc{}
-	o	:= false
+	o := false
 
 	w := strings.Builder{}
 	wspc := strings.Builder{}
@@ -182,7 +200,7 @@ func parsewordLocs(txt string) []WordLoc {
 				wl.W = w.String()
 				wl.s = ws
 				wl.e = we
-				
+
 				wls = append(wls, wl)
 				w.Reset()
 				wl = WordLoc{}
@@ -222,7 +240,6 @@ func parsewordLocs(txt string) []WordLoc {
 		w.Reset()
 		wspc.Reset()
 	}
-
 
 	return wls
 }

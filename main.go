@@ -3,44 +3,89 @@ package main
 import (
 	"compare/textwords"
 	"compare/utils"
+	"flag"
 	"fmt"
 	"os"
-	"strconv"
+	"path"
+	"strings"
 )
+
+var jobfile string
+var newEditingFile string
+var newSourceFile string
+var editingFileStartingIndex int
+var sourceFileStartingIndex int
+
+var jobdata *utils.EditingJob
+
+func init() {
+	flag.StringVar(&jobfile, "jf", "", "jobfile (jf) - location of csv file which holds data for editing job")
+	flag.StringVar(&newEditingFile, "ef", "", "editing file (ef) - for initializing new jobs; location of editing file; only valid if new-source-file is provided as well; will override jobfile")
+	flag.StringVar(&newSourceFile, "sf", "", "source file (sf) - for initializing new jobs; location of source file; only valid if new-editing-file is provided as well; will override jobfile")
+	flag.IntVar(&editingFileStartingIndex, "ei", -1, "editing index (ei) - location to start edit comparison in editing file")
+	flag.IntVar(&sourceFileStartingIndex, "si", -1, "source index (si) - location to start edit comparison in source file")
+}
+
+func initJob() {
+	if newEditingFile != "" && newSourceFile != "" {
+		newJob := utils.EditingJob{
+			EditingFile: newEditingFile,
+			SourceFile: newSourceFile,
+			LatestEditingEdition: 0,
+			LatestSourceEdition: 0,
+			LastEditingIndex: 0,
+			LastSourceIndex: 0,
+		}
+		editf := strings.TrimRight(path.Base(newEditingFile),path.Ext(newEditingFile))
+		srcef := strings.TrimRight(path.Base(newSourceFile),path.Ext(newSourceFile))
+		jobname := fmt.Sprintf("edit_%s_by_%s.csv", editf, srcef)
+
+		err := utils.WriteNewEditingJob(jobname, &newJob)
+		if err != nil {
+			fmt.Printf("Couldn't create new jobfile %s\n%v", jobname,err)
+			os.Exit(0)
+		}
+
+		jobdata = &newJob
+	} else if jobfile != "" {
+		job, err := utils.ReadEditingJob(jobfile)
+		if err != nil {
+			fmt.Printf("Couldn't locat jobfile %s\n%v", jobfile,err)
+			os.Exit(0)
+		}
+		jobdata = job
+	} else {
+		fmt.Println("invalid use. Must provide jobfile OR new-editing-file AND new-source-file")
+		os.Exit(0)
+	}
+}
 
 func main() {
 
-	/* ************************************************************************
-		GET OPTIONS SET
-	************************************************************************ */
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: compare <file to edit> <'source file' upon which edits are based>")
-		return
+	flag.Parse()
+
+	initJob()
+
+	var i int
+	var j int
+
+	if editingFileStartingIndex >= 0 {
+		i = editingFileStartingIndex
+	} else {
+		i = jobdata.LastEditingIndex
 	}
 
-	i := 0
-	j := 0
-
-	file1 := os.Args[1] // file to edit
-	file2 := os.Args[2] // source file
-
-	i, err := strconv.Atoi(os.Args[3])
-	if err != nil {
-		fmt.Printf("Couldn't parse idx, using 0")
-		i = 0
-	}
-
-	j, err = strconv.Atoi(os.Args[4])
-	if err != nil {
-		fmt.Printf("Couldn't parse jdx, using 0")
-		j = 0
+	if sourceFileStartingIndex >= 0 {
+		j = sourceFileStartingIndex
+	} else {
+		j = jobdata.LastSourceIndex
 	}
 
 	/* ************************************************************************
 		READ IN WORDS OF FILE 1
 	************************************************************************ */
 
-	editWords, err := textwords.FromFile(file1)
+	editWords, err := textwords.FromFile(jobdata.FileToEdit())
 	if err != nil {
 		fmt.Println("Error getting edit words:", err)
 		return
@@ -50,7 +95,7 @@ func main() {
 		READ IN WORDS OF FILE 2
 	************************************************************************ */
 
-	sourceWords, err := textwords.FromFile(file2)
+	sourceWords, err := textwords.FromFile(jobdata.FileOfSource())
 	if err != nil {
 		fmt.Println("Error getting source words:", err)
 		return
@@ -61,16 +106,16 @@ func main() {
 	************************************************************************ */
 
 	minLength := min(editWords.Len(), sourceWords.Len())
-	
+
 	discrepancies := false
 	continueEditing := true
 
-	for ; i < minLength && continueEditing; {
-		editWordLoc 	:= editWords.GetWord(i)
-		sourceWordLoc 	:= sourceWords.GetWord(j)
+	for i < minLength && continueEditing {
+		editWordLoc := editWords.GetWord(i)
+		sourceWordLoc := sourceWords.GetWord(j)
 
-		editWord := utils.CleanWord(editWordLoc.W)
-		sourceWord := utils.CleanWord(sourceWordLoc.W)
+		editWord := utils.ReplaceQuotes(editWordLoc.W)
+		sourceWord := utils.ReplaceQuotes(sourceWordLoc.W)
 
 		if editWord == "" {
 			i++
@@ -83,7 +128,7 @@ func main() {
 
 		if editWord != sourceWord {
 			discrepancies = true
-			fmt.Printf("discrepancy:\ntxt: %s\nsrc: %s\n",editWords.SurroundingText(i,10),sourceWords.SurroundingText(j,10))
+			fmt.Printf("discrepancy:\ntxt: %s\nsrc: %s\n", editWords.SurroundingText(i, 10), sourceWords.SurroundingText(j, 10))
 
 			// var choice int
 			var choice string
@@ -103,7 +148,7 @@ func main() {
 				} else if choice == "a" {
 					//  discrep is that file under edit is missing a token from the source
 					//  so add source token to the file under edit
-					editWords.Insert(sourceWordLoc,i)
+					editWords.Insert(sourceWordLoc, i)
 
 					break
 				} else if choice == "e" {
@@ -149,13 +194,22 @@ func main() {
 	}
 
 	if discrepancies {
-		if err := utils.UpdateFile("mod_"+file1, editWords.Text()); err != nil {
-			fmt.Println("Error updating file1:", err)
+		jobdata.BumpEdition()
+		if err := utils.UpdateFile(jobdata.FileToEdit(), editWords.Text()); err != nil {
+			fmt.Printf("Error updating %s: %v",jobdata.FileToEdit(), err)
 		}
-		if err := utils.UpdateFile("mod_"+file2, sourceWords.Text()); err != nil {
-			fmt.Println("Error updating file2:", err)
+		if err := utils.UpdateFile(jobdata.FileOfSource(), sourceWords.Text()); err != nil {
+			fmt.Println("Error updating %s: %v",jobdata.FileOfSource(), err)
 		}
+
+		jobdata.LastEditingIndex = i
+		jobdata.LastSourceIndex = j
+
+		utils.UpdateEditingJob(jobfile, jobdata)
+
 		fmt.Println("Files have been updated based on user choices.")
+
+
 	} else {
 		fmt.Println("Files are identical.")
 	}
