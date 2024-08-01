@@ -215,37 +215,37 @@ func TestSurroundingText(t *testing.T) {
 			at: 0,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "*and?* How could",
+			want: "*and?*  How could",
 		},
 		{
 			at: 1,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "and? *How* could you",
+			want: "and?  *How*  could you",
 		},
 		{
 			at: 2,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "and? How *could* you say",
+			want: "and? How  *could*  you say",
 		},
 		{
 			at: 3,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "How could *you* say that?",
+			want: "How could  *you*  say that?",
 		},
 		{
 			at: 4,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "could you *say* that?",
+			want: "could you  *say*  that?",
 		},
 		{
 			at: 5,
 			size: 2,
 			text: "and?\n\nHow could you say that?",
-			want: "you say *that?*",
+			want: "you say  *that?*",
 		},
 	}
 

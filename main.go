@@ -1,63 +1,84 @@
 package main
 
 import (
-	"compare/textwords"
-	"compare/utils"
 	"flag"
 	"fmt"
 	"os"
 	"path"
+	"poweredit/editingjob"
+	"poweredit/textwords"
+	"poweredit/utils"
 	"strings"
 )
 
 var jobfile string
-var newEditingFile string
-var newSourceFile string
 var editingFileStartingIndex int
 var sourceFileStartingIndex int
 
-var jobdata *utils.EditingJob
+var jobdata *editingjob.EditingJob
 
 func init() {
-	flag.StringVar(&jobfile, "jf", "", "jobfile (jf) - location of csv file which holds data for editing job")
-	flag.StringVar(&newEditingFile, "ef", "", "editing file (ef) - for initializing new jobs; location of editing file; only valid if new-source-file is provided as well; will override jobfile")
-	flag.StringVar(&newSourceFile, "sf", "", "source file (sf) - for initializing new jobs; location of source file; only valid if new-editing-file is provided as well; will override jobfile")
 	flag.IntVar(&editingFileStartingIndex, "ei", -1, "editing index (ei) - location to start edit comparison in editing file")
 	flag.IntVar(&sourceFileStartingIndex, "si", -1, "source index (si) - location to start edit comparison in source file")
 }
 
 func initJob() {
-	if newEditingFile != "" && newSourceFile != "" {
-		newJob := utils.EditingJob{
-			EditingFile: newEditingFile,
-			SourceFile: newSourceFile,
-			LatestEditingEdition: 0,
-			LatestSourceEdition: 0,
-			LastEditingIndex: 0,
-			LastSourceIndex: 0,
-		}
-		editf := strings.TrimRight(path.Base(newEditingFile),path.Ext(newEditingFile))
-		srcef := strings.TrimRight(path.Base(newSourceFile),path.Ext(newSourceFile))
-		jobname := fmt.Sprintf("edit_%s_by_%s.csv", editf, srcef)
+	args := flag.Args()
+	argln := len(args)
 
-		err := utils.WriteNewEditingJob(jobname, &newJob)
-		if err != nil {
-			fmt.Printf("Couldn't create new jobfile %s\n%v", jobname,err)
+	if argln == 1 {
+
+		if args[0] == "jobs" {
+			utils.ClearScreen()
+			fmt.Printf("All available jobs:\n\n")
+			err := editingjob.DisplayJobs()
+			if err != nil {
+				fmt.Println(err)
+			}
 			os.Exit(0)
 		}
+	
+		if strings.HasSuffix(args[0], ".csv") {
+			jobfile = args[0]
+			job, err := editingjob.FromJobFile(jobfile)
+			if err != nil {
+				fmt.Printf("Couldn't locate jobfile %s\n%v", jobfile, err)
+				os.Exit(0)
+			}
+			jobdata = job
+			return
+		}
 
-		jobdata = &newJob
-	} else if jobfile != "" {
-		job, err := utils.ReadEditingJob(jobfile)
+		validJob, _ := editingjob.JobExists(args[0])
+
+		if (validJob) {
+			jobfile = args[0]+".csv"
+			job, err := editingjob.FromJobFile(jobfile)
+			if err != nil {
+				fmt.Printf("Couldn't locate jobfile %s\n%v", jobfile, err)
+				os.Exit(0)
+			}
+			jobdata = job
+			return
+		}
+
+
+	} else if argln == 2 {
+		newEditingFile := args[0]
+		newSourceFile := args[1]
+		
+		job, err := editingjob.FromEditAndSourceFiles(newEditingFile, newSourceFile)
 		if err != nil {
-			fmt.Printf("Couldn't locat jobfile %s\n%v", jobfile,err)
+			fmt.Println(err)
 			os.Exit(0)
 		}
 		jobdata = job
-	} else {
-		fmt.Println("invalid use. Must provide jobfile OR new-editing-file AND new-source-file")
-		os.Exit(0)
+		return
 	}
+
+	fmt.Println("invalid use. Must provide jobfile OR new-editing-file AND new-source-file")
+	os.Exit(0)
+
 }
 
 func main() {
@@ -84,8 +105,7 @@ func main() {
 	/* ************************************************************************
 		READ IN WORDS OF FILE 1
 	************************************************************************ */
-
-	editWords, err := textwords.FromFile(jobdata.FileToEdit())
+	editWords, err := textwords.FromFile(jobdata.LatestEditFile())
 	if err != nil {
 		fmt.Println("Error getting edit words:", err)
 		return
@@ -95,7 +115,7 @@ func main() {
 		READ IN WORDS OF FILE 2
 	************************************************************************ */
 
-	sourceWords, err := textwords.FromFile(jobdata.FileOfSource())
+	sourceWords, err := textwords.FromFile(jobdata.LatestSrceFile())
 	if err != nil {
 		fmt.Println("Error getting source words:", err)
 		return
@@ -127,15 +147,15 @@ func main() {
 		}
 
 		if editWord != sourceWord {
+			utils.Display(fmt.Sprintf("\n\tediting %s  by  %s\n\n\n", path.Base(jobdata.LatestEditFile()), path.Base(jobdata.LatestEditFile())))
 			discrepancies = true
-			fmt.Printf("discrepancy:\ntxt: %s\nsrc: %s\n", editWords.SurroundingText(i, 10), sourceWords.SurroundingText(j, 10))
+			fmt.Printf("\tDISCREPANCY:\n\n\tfile under edit: %s\n\tsource file:     %s\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", editWords.SurroundingText(i, 10), sourceWords.SurroundingText(j, 10))
 
 			// var choice int
 			var choice string
 
 			for {
-				// fmt.Println("Which version to keep? (1 for", file1, ", 2 for", file2, "):")
-				fmt.Printf("How to resolve? ('xy' numbers to advance cursor: x for file under edit, y for source file,  'a' to add missing token, 'e' to edit typo,  'd' to delete token, 'x' to delete current token from source, 'v' to save changes and quit)\n\n")
+				printResolutionOptions()
 				fmt.Scan(&choice)
 
 				// start := max(0, i-10)
@@ -167,6 +187,10 @@ func main() {
 					editWords.Delete(i)
 
 					break
+				} else if choice == "q" {
+					// quit without saving any edits
+					utils.ClearScreen()
+					os.Exit(0)
 				} else if choice == "v" {
 					// save current changes and exit
 					continueEditing = false
@@ -175,16 +199,44 @@ func main() {
 					// delete token from source
 					sourceWords.Delete(j)
 					break
+				} else if choice == "me" {
+					var customWord string
+					var confirm string
+					// manually enter word and edit both by this word
+					for {
+						fmt.Print("enter word to edit both by: ")
+						fmt.Scan(&customWord)
+						fmt.Printf("save '%s' to both indexes? (y/n): ", customWord)
+						fmt.Scan(&confirm)
+						if strings.ToLower(confirm) == "y" {
+							break
+						}
+
+						utils.Display(fmt.Sprintf("\n\tediting %s  by  %s\n\n\n", path.Base(jobdata.LatestEditFile()), path.Base(jobdata.LatestSrceFile())))
+
+						fmt.Printf("\tDISCREPANCY:\n\n\tfile under edit: %s\n\tsource file:     %s\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", editWords.SurroundingText(i, 10), sourceWords.SurroundingText(j, 10))
+					}
+
+					editWordLoc.W = customWord
+					sourceWordLoc.W = customWord
+					editWords.Edit(i, editWordLoc)
+					sourceWords.Edit(j, sourceWordLoc)
+					break
 				} else {
 					digits, err := utils.ParseDigits(choice)
 					if err != nil {
-						fmt.Println("Error parsing digits:", err)
+						fmt.Printf("Not a valid command: %s", choice)
 						break
 					}
 
-					i += digits[0]
-					j += digits[1]
-					break
+					if len(digits) == 1 {
+						i += digits[0]
+						break
+					} else {
+						i += digits[0]
+						j += digits[1]
+						break
+					}
 				}
 			}
 		} else {
@@ -195,24 +247,38 @@ func main() {
 
 	if discrepancies {
 		jobdata.BumpEdition()
-		if err := utils.UpdateFile(jobdata.FileToEdit(), editWords.Text()); err != nil {
-			fmt.Printf("Error updating %s: %v",jobdata.FileToEdit(), err)
+		if err := utils.UpdateFile(jobdata.LatestEditFile(), editWords.Text()); err != nil {
+			fmt.Printf("Error updating %s: %v", jobdata.LatestEditFile(), err)
 		}
-		if err := utils.UpdateFile(jobdata.FileOfSource(), sourceWords.Text()); err != nil {
-			fmt.Println("Error updating %s: %v",jobdata.FileOfSource(), err)
+		if err := utils.UpdateFile(jobdata.LatestSrceFile(), sourceWords.Text()); err != nil {
+			fmt.Printf("Error updating %s: %v", jobdata.LatestSrceFile(), err)
 		}
 
 		jobdata.LastEditingIndex = i
 		jobdata.LastSourceIndex = j
 
-		utils.UpdateEditingJob(jobfile, jobdata)
+		editingjob.UpdateEditingJob(jobfile, jobdata)
 
 		fmt.Println("Files have been updated based on user choices.")
-
 
 	} else {
 		fmt.Println("Files are identical.")
 	}
 
 	fmt.Printf("\n\nleft at indexes [i = %d] [j = %d]\n\n", i, j)
+}
+
+func printResolutionOptions() {
+	fmt.Printf(
+		"\tHow to resolve?\n" +
+			"\t<xy|x> - enter two numbers to advance cursors: x for file under edit, y for source file\n" +
+			"\t\ta single digit entry will advance cursor for file under edit by x\n" +
+			"\ta - to add missing token to file under edit\n" +
+			"\te - edit typo, sets current word of file under edit to current word of source file\n" +
+			"\tex - edit typo in source, sets current word of source file to current word of file under edit\n" +
+			"\tme - manually enter a custom word set current token for file under edit and source file to this word\n" +
+			"\td - delete token from file under edit\n" +
+			"\tx - delete current token from source file\n" +
+			"\tv - save changes and quit\n" +
+			"\tq - quit without saving any changes made\n\n\tenter selection: ")
 }

@@ -121,7 +121,7 @@ func (tw *TextWords) SurroundingText(at, size int) string {
 	cntr := tw.GetWord(at)
 
 	str := fmt.Sprintf("%s%s%s",
-		tw.getFlattenedString(lAt, lSz), " *"+cntr.W+"* ", tw.getFlattenedString(at+1, size))
+		tw.getFlattenedString(lAt, lSz), "  *"+cntr.W+"*  ", tw.getFlattenedString(at+1, size))
 
 	return strings.TrimSpace(str)
 }
