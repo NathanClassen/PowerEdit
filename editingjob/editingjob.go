@@ -2,6 +2,7 @@ package editingjob
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -22,6 +23,11 @@ func init() {
 	
 	JOB_DIRECTORY = homedir+"/.powerEdit/jobs"   //	use actual application file
 	TEXT_DIRECTORY = homedir+"/.powerEdit/texts" //	use actual application file
+}
+
+func init() {
+	createFileIfNotExist(JOB_DIRECTORY)
+	createFileIfNotExist(TEXT_DIRECTORY)
 }
 
 
@@ -159,7 +165,7 @@ func UpdateEditingJob(filename string, job *EditingJob) error {
 func writeNewEditingJob(filename string, job *EditingJob) error {
 	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't create %s: %v",filename,err)
 	}
 	defer file.Close()
 
@@ -214,6 +220,8 @@ func writeAllJobFiles(job *EditingJob) error {
 
 	//  create csv job filename eg. ~/.powerEdit/jobs/edit_badfoo_by_goodfoo/edit_badfoo_by_goodfoo.csv
 	newJobfileName := path.Join(JOB_DIRECTORY, job.name, job.name+".csv")
+
+	createFileIfNotExist(path.Join(JOB_DIRECTORY,job.name))
 
 	//  write job csv
 	if err := writeNewEditingJob(newJobfileName, job); err != nil {
@@ -284,5 +292,15 @@ func DisplayJobs() error {
 		}
 	}
 
+	return nil
+}
+
+func createFileIfNotExist(filename string) error {
+	if _, err := os.Stat(filename); errors.Is(err, fs.ErrNotExist) {
+		err := os.MkdirAll(filename, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("%s doesnt exist but could not be created: %v", filename, err)
+		}
+	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"poweredit/editingjob"
 	"poweredit/textwords"
 	"poweredit/utils"
@@ -64,8 +65,14 @@ func initJob() {
 
 
 	} else if argln == 2 {
-		newEditingFile := args[0]
-		newSourceFile := args[1]
+		newEditingFile, err := filepath.Abs(args[0])
+		if err != nil {
+			fmt.Printf("tried to create new job with %s editing file but could not find absolute path to the file: %v", args[0], err)
+		}
+		newSourceFile, err  := filepath.Abs(args[1])
+		if err != nil {
+			fmt.Printf("tried to create new job with %s source file but could not find absolute path to the file: %v", args[1], err)
+		}
 		
 		job, err := editingjob.FromEditAndSourceFiles(newEditingFile, newSourceFile)
 		if err != nil {
