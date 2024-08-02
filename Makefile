@@ -1,5 +1,5 @@
 build:
-	go build -o poweredit
+	go build -o bin/poweredit
 
 clean:
 	rm ./poweredit
