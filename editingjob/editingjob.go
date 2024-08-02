@@ -74,9 +74,9 @@ func (ej *EditingJob) ToStringSlice() []string {
         ej.sourceFile,
         ej.latestEditFile,
         ej.latestSourceFile,
-        string(ej.latestEdition),
-        string(ej.LastEditingIndex),
-        string(ej.LastSourceIndex),
+        fmt.Sprint(ej.latestEdition),
+        fmt.Sprint(ej.LastEditingIndex),
+        fmt.Sprint(ej.LastSourceIndex),
     }
 }
 
@@ -200,8 +200,8 @@ func FromEditAndSourceFiles(editFile, srceFile string) (*EditingJob, error) {
         name:                 jobname,
         editingFile:           editFile,
         sourceFile:         srceFile,
-        latestEditFile:       fmt.Sprintf("0_%s",baseEditName),
-        latestSourceFile:       fmt.Sprintf("0_%s",baseSrceName),
+        latestEditFile:       path.Join(TEXT_DIRECTORY, "0_"+baseEditName),
+        latestSourceFile:       path.Join(TEXT_DIRECTORY, "0_"+baseSrceName),
         latestEdition:        0,
         LastEditingIndex:     0,
         LastSourceIndex:      0,
@@ -210,7 +210,7 @@ func FromEditAndSourceFiles(editFile, srceFile string) (*EditingJob, error) {
     err := writeAllJobFiles(&newJob)
     if err != nil {
         return nil,
-        fmt.Errorf("Couldn't create new editing job from %s and %s: %v", editFile, srceFile, err)
+        fmt.Errorf("couldn't create new editing job from %s and %s: %v", editFile, srceFile, err)
     }
 
     return &newJob, nil

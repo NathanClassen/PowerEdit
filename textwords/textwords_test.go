@@ -45,7 +45,7 @@ func TestTextFromFile(t *testing.T) {
 	}{
 		{
 			"gutenberg-iliad.txt",
-			"/Users/nathanclassen/go/src/power-edit/texts/gutenberg-iliad.txt",
+			"./test/gutenberg-iliad.txt",
 		},
 	}
 
