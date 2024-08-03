@@ -2,7 +2,7 @@
 
 Project Gutenberg is a repository for thousands of books in the public domain which can be downloaded as .txt files .pdf's or viewed in the web.
 
-These are often created one to several proof-readers who carefully compare a facsimile, against a text file that has been copied from that facsimile.
+These are often created by one to several proof-readers who carefully compare a facsimile against a text file that has been copied from that facsimile.
 
 Inherent in this work is the possibility for mistakes. This can take the form of additions to the text, typos, and omissions from the text including whole missing phrases.
 
@@ -10,6 +10,10 @@ PowerEdit takes as input 2 files, the official Project Gutenberg text and anothe
 prompting the user to decide what to do in each case, providing simple but powerful options.
 
 Users can save there work and PowerEdit allows them to pick right back up at the next discrepancy.
+
+### Note:
+
+Because either file may contain regular, obvious discrepancies (one file has page numbers while the other does not, footnotes, randome symbols, etc) it is very useful to first clean each file up of obvious mistakes by using tools such as find-and-replace in conjunction with regex or other pattern matching. Otherwise the number of discrepancies that one must work though could be drastically increased.
 
 ## Install
 
