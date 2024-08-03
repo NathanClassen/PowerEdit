@@ -253,18 +253,15 @@ func Run(args []string) {
 	}
 
 	if discrepancies {
-		jobdata.BumpEdition()
-		if err := utils.UpdateFile(jobdata.LatestEditFile(), editWords.Text()); err != nil {
+		if err := jobdata.SaveLatestEditAndSourceChanges(editWords.Text(), sourceWords.Text()); err != nil {
+		// if err := utils.UpdateFile(jobdata.LatestEditFile(), editWords.Text()); err != nil {
 			fmt.Printf("Error updating %s: %v", jobdata.LatestEditFile(), err)
-		}
-		if err := utils.UpdateFile(jobdata.LatestSrceFile(), sourceWords.Text()); err != nil {
-			fmt.Printf("Error updating %s: %v", jobdata.LatestSrceFile(), err)
 		}
 
 		jobdata.LastEditingIndex = i
 		jobdata.LastSourceIndex = j
 
-		editingjob.UpdateEditingJob(jobfile, jobdata)
+		jobdata.UpdateEditingJob()
 
 		fmt.Println("Files have been updated based on user choices.")
 

@@ -73,18 +73,26 @@ func (ej *EditingJob) ToStringSlice() []string {
         ej.name,
         ej.editingFile,
         ej.sourceFile,
-        ej.latestEditFile,
-        ej.latestSourceFile,
+        ej.generateLatestEditFilepath(),
+        ej.generateLatestSourceFilepath(),
         fmt.Sprint(ej.latestEdition),
         fmt.Sprint(ej.LastEditingIndex),
         fmt.Sprint(ej.LastSourceIndex),
     }
 }
 
-func (ej *EditingJob) SaveLatestEdition(edits, source string) error {
+func (ej *EditingJob) generateLatestEditFilepath() string {
+	return path.Join(TEXT_DIRECTORY,fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.editingFile)))
+}
+
+func (ej *EditingJob) generateLatestSourceFilepath() string {
+	return path.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.sourceFile)))
+}
+
+func (ej *EditingJob) SaveLatestEditAndSourceChanges(edits, source string) error {
 	ej.latestEdition++
-	newEdits := path.Join(TEXT_DIRECTORY,fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.editingFile)))
-	newSource := path.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.sourceFile)))
+	newEdits := ej.generateLatestEditFilepath()
+	newSource := ej.generateLatestSourceFilepath()
 	if err := utils.UpdateFile(newEdits, edits); err != nil {
 		ej.latestEdition--
 		return fmt.Errorf("error updating %s: %v", newEdits, err)
@@ -94,6 +102,31 @@ func (ej *EditingJob) SaveLatestEdition(edits, source string) error {
 		err := os.Remove(newEdits)
 		return fmt.Errorf("error updating %s: %v", newSource, err)
 	}
+	return nil
+}
+
+
+func (ej *EditingJob) UpdateEditingJob() error {
+	file, err := os.OpenFile(
+		path.Join(JOB_DIRECTORY,ej.name,ej.name+".csv"),
+		os.O_APPEND|os.O_WRONLY, 
+		os.ModeAppend,
+	)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write the job data
+	record := ej.ToStringSlice()
+	err = writer.Write(record)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -157,26 +190,6 @@ func ReadEditingJob(filename string) (*EditingJob, error) {
 	}
 
 	return job, nil
-}
-
-func UpdateEditingJob(filename string, job *EditingJob) error {
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Write the job data
-	record := job.ToStringSlice()
-	err = writer.Write(record)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func writeNewEditingJob(filename string, job *EditingJob) error {

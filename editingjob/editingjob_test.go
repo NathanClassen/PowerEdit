@@ -71,15 +71,15 @@ func TestToStringSlice(t *testing.T) {
 		test_name,
 		test_editingFile,
 		test_sourceFile,
-		test_latestEditFile,
-		test_latestSourceFile,
+		mockExistingEditingJob.generateLatestEditFilepath(),
+		mockExistingEditingJob.generateLatestSourceFilepath(),
 		fmt.Sprint(test_latestEdition),
 		fmt.Sprint(test_LastEditingIndex),
 		fmt.Sprint(test_LastSourceIndex),
 	}
 
 	if !slices.Equal[[]string, string](res, expect) {
-		t.Errorf("got: %v, want %v", res, expect)
+		t.Errorf("\ngot: %#v, \nwant %#v", res, expect)
 	}
 
 	notExpected := []string{
