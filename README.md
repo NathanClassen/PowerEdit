@@ -19,7 +19,9 @@ Because either file may contain regular, obvious discrepancies (one file has pag
 
 From the root of the project run `make build`
 
-This will create the `poweredit` executable which you can move into you PATH
+This will create the `poweredit` executable which you can move into you PATH.
+
+_There is also a `make install` command which will move the executable into `$HOME/go/bin` which is in the PATH on __my__ machine. Of course this may not be the case on your machine. Feel free to make a PR if you want to make this commmand more robust. As it is, it's really just for me–and whoever else happens to have the aforementioned directory in their PATH._
 
 ## Usage
 
