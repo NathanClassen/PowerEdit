@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"poweredit/utils"
 	"strconv"
 	"strings"
 )
@@ -78,6 +79,22 @@ func (ej *EditingJob) ToStringSlice() []string {
         fmt.Sprint(ej.LastEditingIndex),
         fmt.Sprint(ej.LastSourceIndex),
     }
+}
+
+func (ej *EditingJob) SaveLatestEdition(edits, source string) error {
+	ej.latestEdition++
+	newEdits := path.Join(TEXT_DIRECTORY,fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.editingFile)))
+	newSource := path.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.sourceFile)))
+	if err := utils.UpdateFile(newEdits, edits); err != nil {
+		ej.latestEdition--
+		return fmt.Errorf("error updating %s: %v", newEdits, err)
+	}
+	if err := utils.UpdateFile(newSource,source); err != nil {
+		ej.latestEdition--
+		err := os.Remove(newEdits)
+		return fmt.Errorf("error updating %s: %v", newSource, err)
+	}
+	return nil
 }
 
 func FromJobFile(jobfile string) (*EditingJob, error) {

@@ -1,5 +1,9 @@
 build:
 	go build -o bin/poweredit
 
+
+install:
+	cp bin/poweredit ~/go/bin
+	
 clean:
-	rm ./poweredit
+	rm bin/poweredit

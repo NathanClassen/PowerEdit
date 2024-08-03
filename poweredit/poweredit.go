@@ -149,7 +149,7 @@ func Run(args []string) {
 	discrepancies := false
 	continueEditing := true
 
-	for i < minLength && continueEditing {
+	for (i < minLength || j < minLength) && continueEditing {
 		editWordLoc := editWords.GetWord(i)
 		sourceWordLoc := sourceWords.GetWord(j)
 
