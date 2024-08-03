@@ -1,8 +1,8 @@
 # PowerEdit
 
-Project Gutenberg is a repository for thousands of books in the public domain which can be downloades as .txt files .pdf's or viewed in the web.
+Project Gutenberg is a repository for thousands of books in the public domain which can be downloaded as .txt files .pdf's or viewed in the web.
 
-These are often created by a group of distributed proof-readers who carefully compare a facsimile, against a text file that has been copied from that facsimile.
+These are often created one to several proof-readers who carefully compare a facsimile, against a text file that has been copied from that facsimile.
 
 Inherent in this work is the possibility for mistakes. This can take the form of additions to the text, typos, and omissions from the text including whole missing phrases.
 
