@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"poweredit/utils"
 	"strconv"
 	"strings"
@@ -21,39 +21,36 @@ func init() {
 	if !exists {
 		log.Fatal("could not locate home directory by environment variable HOME")
 	}
-	
-	JOB_DIRECTORY = homedir+"/.powerEdit/jobs"   //	use actual application file
-	TEXT_DIRECTORY = homedir+"/.powerEdit/texts" //	use actual application file
-}
 
-func init() {
+	JOB_DIRECTORY = homedir + "/.powerEdit/jobs"   //	use actual application file
+	TEXT_DIRECTORY = homedir + "/.powerEdit/texts" //	use actual application file
+
 	createFileIfNotExist(JOB_DIRECTORY)
 	createFileIfNotExist(TEXT_DIRECTORY)
 }
 
-
 type EditingJob struct { // TODO: have only a sinlge LatestEdition field
-	name                 string
-	editingFile           string // location of txt file
-	sourceFile         string // location of txt file
-    latestEditFile       string // location of edit file with latest edits
-    latestSourceFile       string // location of srce file with latest edits
-	latestEdition        int    // latest edition of txt file
-	LastEditingIndex     int    // where to start processing txt file
-	LastSourceIndex      int    // where to start processing txt file
+	name             string
+	editingFile      string // location of txt file
+	sourceFile       string // location of txt file
+	latestEditFile   string // location of edit file with latest edits
+	latestSourceFile string // location of srce file with latest edits
+	latestEdition    int    // latest edition of txt file
+	LastEditingIndex int    // where to start processing txt file
+	LastSourceIndex  int    // where to start processing txt file
 }
 
 func (ej *EditingJob) FieldNameSlice() []string {
-    return []string{
-        "name",
-        "editing_file",
-        "source_file",
-        "latest_edit_file",
-        "latest_source_file",
-        "latest_edition",
-        "last_editing_index",
-        "last_source_index",
-    }
+	return []string{
+		"name",
+		"editing_file",
+		"source_file",
+		"latest_edit_file",
+		"latest_source_file",
+		"latest_edition",
+		"last_editing_index",
+		"last_source_index",
+	}
 }
 
 func (ej *EditingJob) LatestEditFile() string {
@@ -69,24 +66,24 @@ func (ej *EditingJob) BumpEdition() {
 }
 
 func (ej *EditingJob) ToStringSlice() []string {
-    return []string{
-        ej.name,
-        ej.editingFile,
-        ej.sourceFile,
-        ej.generateLatestEditFilepath(),
-        ej.generateLatestSourceFilepath(),
-        fmt.Sprint(ej.latestEdition),
-        fmt.Sprint(ej.LastEditingIndex),
-        fmt.Sprint(ej.LastSourceIndex),
-    }
+	return []string{
+		ej.name,
+		ej.editingFile,
+		ej.sourceFile,
+		ej.generateLatestEditFilepath(),
+		ej.generateLatestSourceFilepath(),
+		fmt.Sprint(ej.latestEdition),
+		fmt.Sprint(ej.LastEditingIndex),
+		fmt.Sprint(ej.LastSourceIndex),
+	}
 }
 
 func (ej *EditingJob) generateLatestEditFilepath() string {
-	return path.Join(TEXT_DIRECTORY,fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.editingFile)))
+	return filepath.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s", ej.latestEdition, filepath.Base(ej.editingFile)))
 }
 
 func (ej *EditingJob) generateLatestSourceFilepath() string {
-	return path.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s",ej.latestEdition,path.Base(ej.sourceFile)))
+	return filepath.Join(TEXT_DIRECTORY, fmt.Sprintf("%d_%s", ej.latestEdition, filepath.Base(ej.sourceFile)))
 }
 
 func (ej *EditingJob) SaveLatestEditAndSourceChanges(edits, source string) error {
@@ -97,7 +94,7 @@ func (ej *EditingJob) SaveLatestEditAndSourceChanges(edits, source string) error
 		ej.latestEdition--
 		return fmt.Errorf("error updating %s: %v", newEdits, err)
 	}
-	if err := utils.UpdateFile(newSource,source); err != nil {
+	if err := utils.UpdateFile(newSource, source); err != nil {
 		ej.latestEdition--
 		err := os.Remove(newEdits)
 		return fmt.Errorf("error updating %s: %v", newSource, err)
@@ -105,11 +102,10 @@ func (ej *EditingJob) SaveLatestEditAndSourceChanges(edits, source string) error
 	return nil
 }
 
-
 func (ej *EditingJob) UpdateEditingJob() error {
 	file, err := os.OpenFile(
-		path.Join(JOB_DIRECTORY,ej.name,ej.name+".csv"),
-		os.O_APPEND|os.O_WRONLY, 
+		filepath.Join(JOB_DIRECTORY, ej.name, ej.name+".csv"),
+		os.O_APPEND|os.O_WRONLY,
 		os.ModeAppend,
 	)
 	if err != nil {
@@ -131,9 +127,9 @@ func (ej *EditingJob) UpdateEditingJob() error {
 }
 
 func FromJobFile(jobfile string) (*EditingJob, error) {
-	base := path.Base(jobfile)
+	base := filepath.Base(jobfile)
 	noext := strings.TrimRight(base, ".csv")
-	return ReadEditingJob(path.Join(JOB_DIRECTORY,noext,jobfile))
+	return ReadEditingJob(filepath.Join(JOB_DIRECTORY, noext, jobfile))
 }
 
 func ReadEditingJob(filename string) (*EditingJob, error) {
@@ -156,37 +152,36 @@ func ReadEditingJob(filename string) (*EditingJob, error) {
 	headers := records[0]
 
 	if headers[0] != "name" || headers[1] != "editing_file" || headers[2] != "source_file" || headers[3] != "latest_edit_file" ||
-    headers[4] != "latest_source_file" || headers[5] != "latest_edition" || headers[6] != "last_editing_index" || headers[7] != "last_source_index" {
+		headers[4] != "latest_source_file" || headers[5] != "latest_edition" || headers[6] != "last_editing_index" || headers[7] != "last_source_index" {
 		return nil, fmt.Errorf("unexpected CSV headers for job file: %s\nconsider reviewing file", filename)
 	}
-	
+
 	row := records[len(records)-1]
 
 	latestEdition, err := strconv.Atoi(row[5])
 	if err != nil {
 		return nil, err
 	}
-	
+
 	lastEditingIndex, err := strconv.Atoi(row[6])
 	if err != nil {
 		return nil, err
 	}
-	
+
 	lastSourceIndex, err := strconv.Atoi(row[7])
 	if err != nil {
 		return nil, err
 	}
 
-	
 	job := &EditingJob{
-        name: row[0],
-		editingFile:           row[1],
-		sourceFile:         row[2],
-        latestEditFile: row[3],
-        latestSourceFile: row[4],
-		latestEdition: latestEdition,
-		LastEditingIndex:     lastEditingIndex,
-		LastSourceIndex:      lastSourceIndex,
+		name:             row[0],
+		editingFile:      row[1],
+		sourceFile:       row[2],
+		latestEditFile:   row[3],
+		latestSourceFile: row[4],
+		latestEdition:    latestEdition,
+		LastEditingIndex: lastEditingIndex,
+		LastSourceIndex:  lastSourceIndex,
 	}
 
 	return job, nil
@@ -195,7 +190,7 @@ func ReadEditingJob(filename string) (*EditingJob, error) {
 func writeNewEditingJob(filename string, job *EditingJob) error {
 	file, err := os.Create(filename)
 	if err != nil {
-		return fmt.Errorf("couldn't create %s: %v",filename,err)
+		return fmt.Errorf("couldn't create %s: %v", filename, err)
 	}
 	defer file.Close()
 
@@ -220,38 +215,38 @@ func writeNewEditingJob(filename string, job *EditingJob) error {
 }
 
 func FromEditAndSourceFiles(editFile, srceFile string) (*EditingJob, error) {
-    baseEditName := path.Base(editFile)
-    baseSrceName := path.Base(srceFile)
-    shortEditFileName := strings.TrimRight(baseEditName, path.Ext(editFile))
-    shortSrceFileName := strings.TrimRight(baseSrceName, path.Ext(srceFile))
-    jobname := strings.TrimSpace(fmt.Sprintf("edit_%s_by_%s", shortEditFileName, shortSrceFileName))
+	baseEditName := filepath.Base(editFile)
+	baseSrceName := filepath.Base(srceFile)
+	shortEditFileName := strings.TrimRight(baseEditName, filepath.Ext(editFile))
+	shortSrceFileName := strings.TrimRight(baseSrceName, filepath.Ext(srceFile))
+	jobname := strings.TrimSpace(fmt.Sprintf("edit_%s_by_%s", shortEditFileName, shortSrceFileName))
 
-    newJob := EditingJob{
-        name:                 jobname,
-        editingFile:           editFile,
-        sourceFile:         srceFile,
-        latestEditFile:       path.Join(TEXT_DIRECTORY, "0_"+baseEditName),
-        latestSourceFile:       path.Join(TEXT_DIRECTORY, "0_"+baseSrceName),
-        latestEdition:        0,
-        LastEditingIndex:     0,
-        LastSourceIndex:      0,
-    }
+	newJob := EditingJob{
+		name:             jobname,
+		editingFile:      editFile,
+		sourceFile:       srceFile,
+		latestEditFile:   filepath.Join(TEXT_DIRECTORY, "0_"+baseEditName),
+		latestSourceFile: filepath.Join(TEXT_DIRECTORY, "0_"+baseSrceName),
+		latestEdition:    0,
+		LastEditingIndex: 0,
+		LastSourceIndex:  0,
+	}
 
-    err := writeAllJobFiles(&newJob)
-    if err != nil {
-        return nil,
-        fmt.Errorf("couldn't create new editing job from %s and %s: %v", editFile, srceFile, err)
-    }
+	err := writeAllJobFiles(&newJob)
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't create new editing job from %s and %s: %v", editFile, srceFile, err)
+	}
 
-    return &newJob, nil
+	return &newJob, nil
 }
 
 func writeAllJobFiles(job *EditingJob) error {
 
 	//  create csv job filename eg. ~/.powerEdit/jobs/edit_badfoo_by_goodfoo/edit_badfoo_by_goodfoo.csv
-	newJobfileName := path.Join(JOB_DIRECTORY, job.name, job.name+".csv")
+	newJobfileName := filepath.Join(JOB_DIRECTORY, job.name, job.name+".csv")
 
-	createFileIfNotExist(path.Join(JOB_DIRECTORY,job.name))
+	createFileIfNotExist(filepath.Join(JOB_DIRECTORY, job.name))
 
 	//  write job csv
 	if err := writeNewEditingJob(newJobfileName, job); err != nil {
@@ -270,13 +265,13 @@ func writeAllJobFiles(job *EditingJob) error {
 	}
 
 	//  write the first editing version file for the file to edit
-    //      will be used for first edit session, wherefrom edits will be saved to v_1. So v_0 also serves as backup for originals
+	//      will be used for first edit session, wherefrom edits will be saved to v_1. So v_0 also serves as backup for originals
 	if err := os.WriteFile(job.latestEditFile, editFileContent, 0644); err != nil {
 		return fmt.Errorf("couldn't write version_0 edit file: %v", err)
 	}
 
 	//  write the first editing version file for the source of edits
-    //      will be used for first edit session, wherefrom edits will be saved to v_1. So v_0 also serves as backup for originals
+	//      will be used for first edit session, wherefrom edits will be saved to v_1. So v_0 also serves as backup for originals
 	if err := os.WriteFile(job.latestSourceFile, sourceFileContent, 0644); err != nil {
 		return fmt.Errorf("couldn't write version_0 source file: %v", err)
 	}
